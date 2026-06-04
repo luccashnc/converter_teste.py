@@ -1,44 +1,35 @@
 import os
-# DESATIVA O CACHE DA NUMBA (Evita o erro de permissão de escrita no Render)
-os.environ["NUMBA_DISABLE_JIT"] = "1"
-os.environ["NUMBA_CACHE_DIR"] = "/tmp/numba_cache"
-
 import time
 from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse, FileResponse
 from yt_dlp import YoutubeDL
-import librosa
-import numpy as np
+
+# Configurações de ambiente para evitar problemas de compilação na nuvem
+os.environ["NUMBA_DISABLE_JIT"] = "1"
 
 app = FastAPI()
 
-# Usa a pasta /tmp que tem permissão de escrita garantida na nuvem
 OUTPUT_DIR = "/tmp/downloads"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 def detectar_tom_musical(caminho_audio):
     """
-    Analisa o arquivo de áudio utilizando o Cromagrama STFT do Librosa 
-    e perfis de correlação de Krumhansl-Kessler para estimar o tom.
+    Função envelopada de forma segura. Se o Librosa falhar por falta de dependência
+    do sistema (FFmpeg), o app NÃO cai; ele apenas avisa o usuário e garante o download.
     """
     try:
-        for _ in range(5):
-            if os.path.exists(caminho_audio) and os.path.getsize(caminho_audio) > 0:
-                break
-            time.sleep(1)
-            
-        if not os.path.exists(caminho_audio):
-            return "Tom indisponível (Processamento lento)"
+        import librosa
+        import numpy as np
 
-        # Otimizado: sr=11025 reduz drasticamente o uso de memória RAM no Render
+        if not os.path.exists(caminho_audio):
+            return "Tom indisponível"
+
+        # Leitura super leve para não estourar a RAM de 512MB
         y, sr = librosa.load(caminho_audio, sr=11025, mono=True)
-        
-        # Otimizado: chroma_stft é mais rápido e não trava a inicialização do contêiner
         chroma = librosa.feature.chroma_stft(y=y, sr=sr)
         chroma_medio = np.mean(chroma, axis=1)
         
         notas = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-        
         perfil_maior = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
         perfil_menor = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17])
         
@@ -55,14 +46,13 @@ def detectar_tom_musical(caminho_audio):
             if corr_maior > melhor_correlacao:
                 melhor_correlacao = corr_maior
                 tom_detectado = f"{notas[i]} Maior"
-                
             if corr_menor > melhor_correlacao:
                 melhor_correlacao = corr_menor
                 tom_detectado = f"{notas[i]} Menor"
                 
         return tom_detectado
     except Exception as e:
-        return f"Tom indisponível (Erro na análise)"
+        return f"Tom indisponível (Erro na análise: {str(e)})"
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -146,4 +136,4 @@ def baixar_arquivo(arquivo: str):
     caminho_completo = os.path.join(OUTPUT_DIR, arquivo)
     if os.path.exists(caminho_completo):
         return FileResponse(caminho_completo, media_type="audio/mpeg", filename="musica_convertida.mp3")
-    return HTMLResponse("<h3>Arquivo expirado ou não encontrado. Volte e converta novamente.</h3>", status_code=404)
+    return HTMLResponse("<h3>Arquivo expirado ou não encontrado.</h3>", status_code=404)
