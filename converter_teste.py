@@ -92,7 +92,6 @@ def converter_video(url: str = Form(...)):
     id_arquivo = "audio_analisado"
     caminho_mp3 = os.path.join(OUTPUT_DIR, f"{id_arquivo}.mp3")
     
-    # Bloco try/except corrigido e perfeitamente estruturado para limpeza
     if os.path.exists(caminho_mp3):
         try:
             os.remove(caminho_mp3)
@@ -125,5 +124,32 @@ def converter_video(url: str = Form(...)):
         </body>
         """
     
-    # Executa a análise de tom no arquivo baixado
-    tom_da_musica = detectar_tom_musical(caminho_mp3
+    # Executa a análise de tom no arquivo baixado (Parêntese corrigido aqui)
+    tom_da_musica = detectar_tom_musical(caminho_mp3)
+    
+    return f"""
+    <html>
+        <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Resultado da Análise</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; text-align: center; padding: 40px; background-color: #f4f4f9;">
+            <div style="background: white; padding: 30px; border-radius: 10px; display: inline-block; box-shadow: 0px 4px 6px rgba(0,0,0,0.1); max-width: 90%;">
+                <h3>Música Processada!</h3>
+                <p style="font-size: 18px; margin: 20px 0;">Tom Estimado: <strong style="color: #e63946; font-size: 26px;">{tom_da_musica}</strong></p>
+                <br>
+                <a href="/download?arquivo={id_arquivo}.mp3" style="display: inline-block; padding: 12px 24px; background-color: #2a9d8f; color: white; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold;">Baixar Arquivo MP3</a>
+                <br><br>
+                <a href="/" style="color: #666; text-decoration: none; font-size: 14px;">← Converter outra</a>
+            </div>
+        </body>
+    </html>
+    """
+
+
+@app.get("/download")
+def baixar_arquivo(arquivo: str):
+    caminho_completo = os.path.join(OUTPUT_DIR, arquivo)
+    if os.path.exists(caminho_completo):
+        return FileResponse(caminho_completo, media_type="audio/mpeg", filename="musica_convertida.mp3")
+    return HTMLResponse("<h3>Arquivo expirado ou não encontrado. Volte e converta novamente.</h3>
