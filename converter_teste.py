@@ -92,7 +92,38 @@ def converter_video(url: str = Form(...)):
     id_arquivo = "audio_analisado"
     caminho_mp3 = os.path.join(OUTPUT_DIR, f"{id_arquivo}.mp3")
     
-    # Limpa downloads anteriores para economizar espaço em disco no container
+    # Bloco try/except corrigido e perfeitamente estruturado para limpeza
     if os.path.exists(caminho_mp3):
         try:
             os.remove(caminho_mp3)
+        except Exception:
+            pass
+
+    # Configuração do yt-dlp atualizada com suporte ao arquivo de cookies
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'cookiefile': 'cookies.txt',
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '192',
+        }],
+        'outtmpl': os.path.join(OUTPUT_DIR, f"{id_arquivo}.%(ext)s"),
+        'restrictfilenames': True,
+        'keepvideo': False,
+    }
+    
+    try:
+        with YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+    except Exception as e:
+        return f"""
+        <body style="font-family: Arial; text-align: center; padding: 40px;">
+            <h3>Erro ao baixar do YouTube</h3>
+            <p style="color: red;">{str(e)}</p>
+            <a href="/">Voltar</a>
+        </body>
+        """
+    
+    # Executa a análise de tom no arquivo baixado
+    tom_da_musica = detectar_tom_musical(caminho_mp3
