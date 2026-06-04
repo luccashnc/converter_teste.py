@@ -4,3 +4,4 @@ yt-dlp
 librosa
 numpy
 soundfile
+python-multipart
