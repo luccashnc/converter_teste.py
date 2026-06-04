@@ -99,8 +99,10 @@ def converter_video(url: str = Form(...)):
         except:
             pass
 
+    # Configuração do yt-dlp atualizada com suporte ao arquivo de cookies
     ydl_opts = {
         'format': 'bestaudio/best',
+        'cookiefile': 'cookies.txt',
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
@@ -113,42 +115,3 @@ def converter_video(url: str = Form(...)):
     
     try:
         with YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
-    except Exception as e:
-        return f"""
-        <body style="font-family: Arial; text-align: center; padding: 40px;">
-            <h3>Erro ao baixar do YouTube</h3>
-            <p style="color: red;">{str(e)}</p>
-            <a href="/">Voltar</a>
-        </body>
-        """
-    
-    # Executa a análise de tom no arquivo baixado
-    tom_da_musica = detectar_tom_musical(caminho_mp3)
-    
-    return f"""
-    <html>
-        <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Resultado da Análise</title>
-        </head>
-        <body style="font-family: Arial, sans-serif; text-align: center; padding: 40px; background-color: #f4f4f9;">
-            <div style="background: white; padding: 30px; border-radius: 10px; display: inline-block; box-shadow: 0px 4px 6px rgba(0,0,0,0.1); max-width: 90%;">
-                <h3>Música Processada!</h3>
-                <p style="font-size: 18px; margin: 20px 0;">Tom Estimado: <strong style="color: #e63946; font-size: 26px;">{tom_da_musica}</strong></p>
-                <br>
-                <a href="/download?arquivo={id_arquivo}.mp3" style="display: inline-block; padding: 12px 24px; background-color: #2a9d8f; color: white; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold;">Baixar Arquivo MP3</a>
-                <br><br>
-                <a href="/" style="color: #666; text-decoration: none; font-size: 14px;">← Converter outra</a>
-            </div>
-        </body>
-    </html>
-    """
-
-
-@app.get("/download")
-def baixar_arquivo(arquivo: str):
-    caminho_completo = os.path.join(OUTPUT_DIR, arquivo)
-    if os.path.exists(caminho_completo):
-        return FileResponse(caminho_completo, media_type="audio/mpeg", filename="musica_convertida.mp3")
-    return HTMLResponse("<h3>Arquivo expirado ou não encontrado. Volte e converta novamente.</h3>", status_code=404)
