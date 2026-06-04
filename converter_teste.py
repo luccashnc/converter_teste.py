@@ -124,7 +124,7 @@ def converter_video(url: str = Form(...)):
         </body>
         """
     
-    # Executa a análise de tom no arquivo baixado (Parêntese corrigido aqui)
+    # Executa a análise de tom no arquivo baixado
     tom_da_musica = detectar_tom_musical(caminho_mp3)
     
     return f"""
@@ -152,4 +152,4 @@ def baixar_arquivo(arquivo: str):
     caminho_completo = os.path.join(OUTPUT_DIR, arquivo)
     if os.path.exists(caminho_completo):
         return FileResponse(caminho_completo, media_type="audio/mpeg", filename="musica_convertida.mp3")
-    return HTMLResponse("<h3>Arquivo expirado ou não encontrado. Volte e converta novamente.</h3>
+    return HTMLResponse("<h3>Arquivo expirado ou não encontrado. Volte e converta novamente.</h3>", status_code=404)
