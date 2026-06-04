@@ -10,9 +10,12 @@ os.environ["NUMBA_CACHE_DIR"] = "/tmp/numba_cache"
 
 app = FastAPI()
 
-# Definição do diretório temporário correto
+# Definição dos diretórios corretos usando caminhos absolutos
 OUTPUT_DIR = "/tmp/downloads"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+# Mapeia o caminho absoluto exato do arquivo de cookies na nuvem
+CAMINHO_COOKIES = os.path.join(os.path.dirname(__file__), "cookies.txt")
 
 def detectar_tom_musical(caminho_audio):
     """
@@ -98,10 +101,10 @@ def converter_video(url: str = Form(...)):
         except Exception:
             pass
 
-    # Configuração do yt-dlp atualizada com suporte ao arquivo de cookies
+    # Configuração atualizada para usar o caminho absoluto do arquivo de cookies
     ydl_opts = {
         'format': 'bestaudio/best',
-        'cookiefile': 'cookies.txt',
+        'cookiefile': CAMINHO_COOKIES,
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
