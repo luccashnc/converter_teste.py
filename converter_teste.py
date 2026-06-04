@@ -137,3 +137,18 @@ def converter_video(url: str = Form(...)):
                 <h3>Música Processada!</h3>
                 <p style="font-size: 18px; margin: 20px 0;">Tom Estimado: <strong style="color: #e63946; font-size: 26px;">{tom_da_musica}</strong></p>
                 <br>
+                <a href="/download?arquivo={id_arquivo}.mp3" style="display: inline-block; padding: 12px 24px; background-color: #2a9d8f; color: white; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold;">Baixar Arquivo MP3</a>
+                <br><br>
+                <a href="/" style="color: #666; text-decoration: none; font-size: 14px;">← Converter outra</a>
+            </div>
+        </body>
+    </html>
+    """
+
+
+@app.get("/download")
+def baixar_arquivo(arquivo: str):
+    caminho_completo = os.path.join(OUTPUT_DIR, arquivo)
+    if os.path.exists(caminho_completo):
+        return FileResponse(caminho_completo, media_type="audio/mpeg", filename="musica_convertida.mp3")
+    return HTMLResponse("<h3>Arquivo expirado ou não encontrado. Volte e converta novamente.</h3>", status_code=404)
