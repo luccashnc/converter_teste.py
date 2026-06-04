@@ -29,6 +29,7 @@ def detectar_tom_musical(caminho_audio):
         if not os.path.exists(caminho_audio):
             return "Tom indisponivel (Processamento lento)"
 
+        # O Librosa lê nativamente arquivos .m4a sem problemas
         y, sr = librosa.load(caminho_audio, sr=11025, mono=True)
         chroma = librosa.feature.chroma_stft(y=y, sr=sr)
         chroma_medio = np.mean(chroma, axis=1)
@@ -56,8 +57,8 @@ def detectar_tom_musical(caminho_audio):
                 tom_detectado = f"{notas[i]} Menor"
                 
         return tom_detectado
-    except Exception:
-        return "Tom indisponivel (Erro na analise)"
+    except Exception as e:
+        return f"Tom indisponivel (Erro: {str(e)[:30]})"
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -77,26 +78,22 @@ def pagina_inicial():
 @app.post("/converter", response_class=HTMLResponse)
 def converter_video(url: str = Form(...)):
     id_arquivo = "audio_analisado"
-    caminho_mp3 = os.path.join(OUTPUT_DIR, f"{id_arquivo}.mp3")
+    # Mudança para extenção m4a nativa
+    caminho_audio = os.path.join(OUTPUT_DIR, f"{id_arquivo}.m4a")
     
-    if os.path.exists(caminho_mp3):
+    if os.path.exists(caminho_audio):
         try:
-            os.remove(caminho_mp3)
+            os.remove(caminho_audio)
         except Exception:
             pass
 
+    # Força o download do melhor áudio no formato m4a nativo do YouTube, sem precisar de FFmpeg
     ydl_opts = {
-        'format': 'bestaudio/best',
+        'format': 'bestaudio[ext=m4a]/best',
         'cookiefile': CAMINHO_COOKIES,
         'outtmpl': os.path.join(OUTPUT_DIR, f"{id_arquivo}.%(ext)s"),
         'restrictfilenames': True,
         'keepvideo': False,
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
-            'preferredquality': '192',
-        }],
-        'prefer_ffmpeg': True,
     }
     
     try:
@@ -106,14 +103,14 @@ def converter_video(url: str = Form(...)):
         err_msg = str(e).replace('"', "'").replace('\n', ' ')
         return f"<html><body><h3>Erro no download</h3><p style='color:red;'>{err_msg}</p><a href='/'>Voltar</a></body></html>"
     
-    tom_da_musica = detectar_tom_musical(caminho_mp3)
+    tom_da_musica = detectar_tom_musical(caminho_audio)
     
     return (
         f"<html><body style='font-family: Arial, sans-serif; text-align: center; padding: 40px; background-color: #f4f4f9;'>"
         f"<div style='background: white; padding: 30px; border-radius: 10px; display: inline-block; box-shadow: 0px 4px 6px rgba(0,0,0,0.1);'>"
         f"<h3>Musica Processada!</h3>"
         f"<p style='font-size: 18px;'>Tom Estimado: <strong style='color: #e63946; font-size: 24px;'>{tom_da_musica}</strong></p><br>"
-        f"<a href='/download?arquivo={id_arquivo}.mp3' style='display: inline-block; padding: 12px 24px; background-color: #2a9d8f; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;'>Baixar Arquivo MP3</a>"
+        f"<a href='/download?arquivo={id_arquivo}.m4a' style='display: inline-block; padding: 12px 24px; background-color: #2a9d8f; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;'>Baixar Arquivo Áudio</a>"
         f"<br><br><a href='/' style='color: #666; text-decoration: none;'><- Converter outra</a>"
         f"</div></body></html>"
     )
@@ -123,5 +120,5 @@ def converter_video(url: str = Form(...)):
 def baixar_arquivo(arquivo: str):
     caminho_completo = os.path.join(OUTPUT_DIR, arquivo)
     if os.path.exists(caminho_completo):
-        return FileResponse(caminho_completo, media_type="audio/mpeg", filename="musica_convertida.mp3")
+        return FileResponse(caminho_completo, media_type="audio/mp4", filename="audio_convertido.m4a")
     return HTMLResponse("<h3>Arquivo expirado ou nao encontrado. Volte e converta novamente.</h3>", status_code=404)
