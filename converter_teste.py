@@ -8,7 +8,6 @@ from yt_dlp import YoutubeDL
 os.environ["NUMBA_DISABLE_JIT"] = "1"
 os.environ["NUMBA_CACHE_DIR"] = "/tmp/numba_cache"
 
-# 1. Criação do aplicativo FastAPI (Precisa vir ANTES de qualquer rota)
 app = FastAPI()
 
 OUTPUT_DIR = "/tmp/downloads"
@@ -28,7 +27,7 @@ def detectar_tom_musical(caminho_audio):
             time.sleep(1)
             
         if not os.path.exists(caminho_audio):
-            return "Tom indisponível (Processamento lento)"
+            return "Tom indisponivel (Processamento lento)"
 
         y, sr = librosa.load(caminho_audio, sr=11025, mono=True)
         chroma = librosa.feature.chroma_stft(y=y, sr=sr)
@@ -39,7 +38,7 @@ def detectar_tom_musical(caminho_audio):
         perfil_menor = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17])
         
         melhor_correlacao = -1
-        tom_detectado = "Não identificado"
+        tom_detectado = "Nao identificado"
         
         for i in range(12):
             p_maior_rotacionado = np.roll(perfil_maior, i)
@@ -58,26 +57,21 @@ def detectar_tom_musical(caminho_audio):
                 
         return tom_detectado
     except Exception:
-        return "Tom indisponível (Erro na análise)"
+        return "Tom indisponivel (Erro na analise)"
 
 
 @app.get("/", response_class=HTMLResponse)
 def pagina_inicial():
-    return """
-    <html>
-        <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Conversor & Key Detector</title>
-        </head>
-        <body style="font-family: Arial, sans-serif; text-align: center; padding: 30px; background-color: #f4f4f9;">
-            <h2>Conversor Privado com Detetor de Tom</h2>
-            <form action="/converter" method="post" style="margin-top: 20px;">
-                <input type="text" name="url" placeholder="Cole a URL do YouTube aqui" style="width: 90%; max-width: 500px; padding: 12px; border-radius: 5px; border: 1px solid #ccc;"><br><br>
-                <button type="submit" style="padding: 12px 24px; background-color: #007bff; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer;">Analisar e Converter</button>
-            </form>
-        </body>
-    </html>
-    """
+    return (
+        "<html><head><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+        "<title>Conversor & Key Detector</title></head>"
+        "<body style='font-family: Arial, sans-serif; text-align: center; padding: 30px; background-color: #f4f4f9;'>"
+        "<h2>Conversor Privado com Detetor de Tom</h2>"
+        "<form action='/converter' method='post' style='margin-top: 20px;'>"
+        "<input type='text' name='url' placeholder='Cole a URL do YouTube aqui' style='width: 90%; max-width: 500px; padding: 12px; border-radius: 5px; border: 1px solid #ccc;'><br><br>"
+        "<button type='submit' style='padding: 12px 24px; background-color: #007bff; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer;'>Analisar e Converter</button>"
+        "</form></body></html>"
+    )
 
 
 @app.post("/converter", response_class=HTMLResponse)
@@ -91,7 +85,6 @@ def converter_video(url: str = Form(...)):
         except Exception:
             pass
 
-    # Configuração estável com cookies nativos do Secret Files
     ydl_opts = {
         'format': 'bestaudio/best',
         'cookiefile': CAMINHO_COOKIES,
@@ -110,11 +103,25 @@ def converter_video(url: str = Form(...)):
         with YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
     except Exception as e:
-        return f"<html><body><h3>Erro no download</h3><p style='color:red;'>{str(e)}</p><a href='/'>Voltar</a></body></html>"
+        err_msg = str(e).replace('"', "'").replace('\n', ' ')
+        return f"<html><body><h3>Erro no download</h3><p style='color:red;'>{err_msg}</p><a href='/'>Voltar</a></body></html>"
     
     tom_da_musica = detectar_tom_musical(caminho_mp3)
     
-    return f"""
-    <html>
-        <body style="font-family: Arial, sans-serif; text-align: center; padding: 40px; background-color: #f4f4f9;">
-            <div style="background: white; padding: 30px; border-radius: 10px; display: inline-block; box-
+    return (
+        f"<html><body style='font-family: Arial, sans-serif; text-align: center; padding: 40px; background-color: #f4f4f9;'>"
+        f"<div style='background: white; padding: 30px; border-radius: 10px; display: inline-block; box-shadow: 0px 4px 6px rgba(0,0,0,0.1);'>"
+        f"<h3>Musica Processada!</h3>"
+        f"<p style='font-size: 18px;'>Tom Estimado: <strong style='color: #e63946; font-size: 24px;'>{tom_da_musica}</strong></p><br>"
+        f"<a href='/download?arquivo={id_arquivo}.mp3' style='display: inline-block; padding: 12px 24px; background-color: #2a9d8f; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;'>Baixar Arquivo MP3</a>"
+        f"<br><br><a href='/' style='color: #666; text-decoration: none;'><- Converter outra</a>"
+        f"</div></body></html>"
+    )
+
+
+@app.get("/download")
+def baixar_arquivo(arquivo: str):
+    caminho_completo = os.path.join(OUTPUT_DIR, arquivo)
+    if os.path.exists(caminho_completo):
+        return FileResponse(caminho_completo, media_type="audio/mpeg", filename="musica_convertida.mp3")
+    return HTMLResponse("<h3>Arquivo expirado ou nao encontrado. Volte e converta novamente.</h3>", status_code=404)
