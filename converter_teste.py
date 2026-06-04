@@ -1,4 +1,8 @@
 import os
+# DESATIVA O CACHE DA NUMBA (Evita o erro de permissão de escrita no Render)
+os.environ["NUMBA_DISABLE_JIT"] = "1"
+os.environ["NUMBA_CACHE_DIR"] = "/tmp/numba_cache"
+
 import time
 from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse, FileResponse
@@ -8,16 +12,16 @@ import numpy as np
 
 app = FastAPI()
 
-OUTPUT_DIR = "downloads"
+# Usa a pasta /tmp que tem permissão de escrita garantida na nuvem
+OUTPUT_DIR = "/tmp/downloads"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 def detectar_tom_musical(caminho_audio):
     """
-    Analisa o arquivo de áudio utilizando o Cromagrama do Librosa 
+    Analisa o arquivo de áudio utilizando o Cromagrama STFT do Librosa 
     e perfis de correlação de Krumhansl-Kessler para estimar o tom.
     """
     try:
-        # Aguarda brevemente o FFmpeg liberar totalmente o arquivo no disco (máx 5 segundos)
         for _ in range(5):
             if os.path.exists(caminho_audio) and os.path.getsize(caminho_audio) > 0:
                 break
@@ -26,16 +30,15 @@ def detectar_tom_musical(caminho_audio):
         if not os.path.exists(caminho_audio):
             return "Tom indisponível (Processamento lento)"
 
-        # Carrega o áudio reduzindo o sample rate (sr) para economizar RAM
-        y, sr = librosa.load(caminho_audio, sr=22050, mono=True)
+        # Otimizado: sr=11025 reduz drasticamente o uso de memória RAM no Render
+        y, sr = librosa.load(caminho_audio, sr=11025, mono=True)
         
-        # Extrai as características de croma (intensidade das 12 notas)
-        chroma = librosa.feature.chroma_cqt(y=y, sr=sr)
+        # Otimizado: chroma_stft é mais rápido e não trava a inicialização do contêiner
+        chroma = librosa.feature.chroma_stft(y=y, sr=sr)
         chroma_medio = np.mean(chroma, axis=1)
         
         notas = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
         
-        # Perfis matemáticos para escalas Maiores e Menores
         perfil_maior = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
         perfil_menor = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17])
         
@@ -59,8 +62,7 @@ def detectar_tom_musical(caminho_audio):
                 
         return tom_detectado
     except Exception as e:
-        # Retorna o erro de forma amigável para não derrubar o app
-        return f"Tom indisponível (Erro de decodificação)"
+        return f"Tom indisponível (Erro na análise)"
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -87,7 +89,6 @@ def converter_video(url: str = Form(...)):
     id_arquivo = "audio_analisado"
     caminho_mp3 = os.path.join(OUTPUT_DIR, f"{id_arquivo}.mp3")
     
-    # Limpa conversões anteriores com segurança
     if os.path.exists(caminho_mp3):
         try:
             os.remove(caminho_mp3)
@@ -101,13 +102,11 @@ def converter_video(url: str = Form(...)):
             'preferredcodec': 'mp3',
             'preferredquality': '192',
         }],
-        # Força a saída limpa e direta na pasta destino
         'outtmpl': os.path.join(OUTPUT_DIR, f"{id_arquivo}.%(ext)s"),
         'restrictfilenames': True,
-        'keepvideo': False, # Garante que o arquivo de origem seja deletado após o MP3 ser extraído
+        'keepvideo': False,
     }
     
-    # Executa o download
     try:
         with YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
@@ -120,7 +119,6 @@ def converter_video(url: str = Form(...)):
         </body>
         """
     
-    # Processa o tom musical de forma segura
     tom_da_musica = detectar_tom_musical(caminho_mp3)
     
     return f"""
