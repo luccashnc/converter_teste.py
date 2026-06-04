@@ -96,22 +96,3 @@ def converter_video(url: str = Form(...)):
     if os.path.exists(caminho_mp3):
         try:
             os.remove(caminho_mp3)
-        except:
-            pass
-
-    # Configuração do yt-dlp atualizada com suporte ao arquivo de cookies
-    ydl_opts = {
-        'format': 'bestaudio/best',
-        'cookiefile': 'cookies.txt',
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
-            'preferredquality': '192',
-        }],
-        'outtmpl': os.path.join(OUTPUT_DIR, f"{id_arquivo}.%(ext)s"),
-        'restrictfilenames': True,
-        'keepvideo': False,
-    }
-    
-    try:
-        with YoutubeDL(ydl_opts) as ydl:
