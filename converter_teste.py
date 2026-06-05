@@ -29,7 +29,6 @@ def detectar_tom_musical(caminho_audio):
         if not os.path.exists(caminho_audio):
             return "Tom indisponivel (Processamento lento)"
 
-        # O Librosa lê nativamente arquivos .m4a sem problemas
         y, sr = librosa.load(caminho_audio, sr=11025, mono=True)
         chroma = librosa.feature.chroma_stft(y=y, sr=sr)
         chroma_medio = np.mean(chroma, axis=1)
@@ -78,7 +77,6 @@ def pagina_inicial():
 @app.post("/converter", response_class=HTMLResponse)
 def converter_video(url: str = Form(...)):
     id_arquivo = "audio_analisado"
-    # Mudança para extenção m4a nativa
     caminho_audio = os.path.join(OUTPUT_DIR, f"{id_arquivo}.m4a")
     
     if os.path.exists(caminho_audio):
@@ -87,13 +85,18 @@ def converter_video(url: str = Form(...)):
         except Exception:
             pass
 
-    # Força o download do melhor áudio no formato m4a nativo do YouTube, sem precisar de FFmpeg
     ydl_opts = {
         'format': 'bestaudio[ext=m4a]/best',
         'cookiefile': CAMINHO_COOKIES,
         'outtmpl': os.path.join(OUTPUT_DIR, f"{id_arquivo}.%(ext)s"),
         'restrictfilenames': True,
         'keepvideo': False,
+        # Emulação de cabeçalho para aumentar o bypass de segurança do YouTube
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+        }
     }
     
     try:
