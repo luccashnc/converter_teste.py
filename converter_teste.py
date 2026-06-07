@@ -60,4 +60,71 @@ def detectar_tom_musical(caminho_audio):
         return f"Tom indisponivel (Erro: {str(e)[:30]})"
 
 
-@
+@app.get("/", response_class=HTMLResponse)
+def pagina_inicial():
+    return """
+    <html>
+        <head>
+            <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+            <title>Conversor & Key Detector</title>
+        </head>
+        <body style='font-family: Arial, sans-serif; text-align: center; padding: 30px; background-color: #f4f4f9;'>
+            <h2>Conversor Privado com Detetor de Tom</h2>
+            <form action='/converter' method='post' style='margin-top: 20px;'>
+                <input type='text' name='url' placeholder='Cole a URL do YouTube aqui' style='width: 90%; max-width: 500px; padding: 12px; border-radius: 5px; border: 1px solid #ccc;'><br><br>
+                <button type='submit' style='padding: 12px 24px; background-color: #007bff; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer;'>Analisar e Converter</button>
+            </form>
+        </body>
+    </html>
+    """
+
+
+@app.post("/converter", response_class=HTMLResponse)
+def converter_video(url: str = Form(...)):
+    id_arquivo = "audio_analisado"
+    caminho_audio = os.path.join(OUTPUT_DIR, f"{id_arquivo}.m4a")
+    
+    if os.path.exists(caminho_audio):
+        try:
+            os.remove(caminho_audio)
+        except Exception:
+            pass
+
+    ydl_opts = {
+        'format': 'ba[ext=m4a]/bestaudio/best',
+        'cookiefile': CAMINHO_COOKIES,
+        'outtmpl': os.path.join(OUTPUT_DIR, f"{id_arquivo}.%(ext)s"),
+        'restrictfilenames': True,
+        'keepvideo': False,
+        'remote_components': 'ejs:github',
+    }
+    
+    try:
+        with YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+    except Exception as e:
+        err_msg = str(e).replace('"', "'").replace('\n', ' ')
+        return f"<html><body><h3>Erro no download</h3><p style='color:red;'>{err_msg}</p><a href='/'>Voltar</a></body></html>"
+    
+    tom_da_musica = detectar_tom_musical(caminho_audio)
+    
+    return """
+    <html>
+        <body style='font-family: Arial, sans-serif; text-align: center; padding: 40px; background-color: #f4f4f9;'>
+            <div style='background: white; padding: 30px; border-radius: 10px; display: inline-block; box-shadow: 0px 4px 6px rgba(0,0,0,0.1);'>
+                <h3>Musica Processada!</h3>
+                <p style='font-size: 18px;'>Tom Estimado: <strong style='color: #e63946; font-size: 24px;'>{tom}</strong></p><br>
+                <a href='/download?arquivo={id}.m4a' style='display: inline-block; padding: 12px 24px; background-color: #2a9d8f; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;'>Baixar Arquivo Áudio</a>
+                <br><br><a href='/' style='color: #666; text-decoration: none;'><- Converter outra</a>
+            </div>
+        </body>
+    </html>
+    """.format(tom=tom_da_musica, id=id_arquivo)
+
+
+@app.get("/download")
+def baixar_arquivo(arquivo: str):
+    caminho_completo = os.path.join(OUTPUT_DIR, arquivo)
+    if os.path.exists(caminho_completo):
+        return FileResponse(caminho_completo, media_type="audio/mp4", filename="audio_convertido.m4a")
+    return HTMLResponse("<h3>Arquivo expirado ou nao encontrado. Volte e converta novamente.</h3>", status_code=404)
