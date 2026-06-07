@@ -45,28 +45,4 @@ def detectar_tom_musical(caminho_audio):
             p_menor_rotacionado = np.roll(perfil_menor, i)
             
             corr_maior = np.corrcoef(chroma_medio, p_maior_rotacionado)[0, 1]
-            corr_menor = np.corrcoef(chroma_medio, p_menor_rotacionado)[0, 1]
-            
-            if corr_maior > melhor_correlacao:
-                melhor_correlacao = corr_maior
-                tom_detectado = f"{notas[i]} Maior"
-                
-            if corr_menor > melhor_correlacao:
-                melhor_correlacao = corr_menor
-                tom_detectado = f"{notas[i]} Menor"
-                
-        return tom_detectado
-    except Exception as e:
-        return f"Tom indisponivel (Erro: {str(e)[:30]})"
-
-
-@app.get("/", response_class=HTMLResponse)
-def pagina_inicial():
-    return (
-        "<html><head><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-        "<title>Conversor & Key Detector</title></head>"
-        "<body style='font-family: Arial, sans-serif; text-align: center; padding: 30px; background-color: #f4f4f9;'>"
-        "<h2>Conversor Privado com Detetor de Tom</h2>"
-        "<form action='/converter' method='post' style='margin-top: 20px;'>"
-        "<input type='text' name='url' placeholder='Cole a URL do YouTube aqui' style='width: 90%; max-width: 500px; padding: 12px; border-radius: 5px; border: 1px solid #ccc;'><br><br>"
-        "<button type='submit' style='padding: 12px 24px; background-color: #007bff; color: white; border:
+            corr_menor = np.corrcoef(chroma_medio, p_menor
