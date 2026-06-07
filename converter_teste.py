@@ -86,7 +86,8 @@ def converter_video(url: str = Form(...)):
             pass
 
     ydl_opts = {
-        'format': 'bestaudio[ext=m4a]/best',
+        # APLICAÇÃO DA CORREÇÃO 1: Evita quebras se o formato rígido m4a não estiver disponível
+        'format': 'ba[ext=m4a]/bestaudio/best',
         'cookiefile': CAMINHO_COOKIES,
         'outtmpl': os.path.join(OUTPUT_DIR, f"{id_arquivo}.%(ext)s"),
         'restrictfilenames': True,
