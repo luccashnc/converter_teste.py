@@ -3,6 +3,7 @@ import time
 from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse, FileResponse
 from yt_dlp import YoutubeDL
+from a2wsgi import ASGITOWSGI  # Adicionado para compatibilidade com o PythonAnywhere
 
 # Configurações de ambiente para nuvem
 os.environ["NUMBA_DISABLE_JIT"] = "1"
@@ -13,8 +14,8 @@ app = FastAPI()
 OUTPUT_DIR = "/tmp/downloads"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# Mapeia o caminho absoluto do arquivo criado pelo Secret Files do Render
-CAMINHO_COOKIES = os.path.join(os.path.dirname(__file__), "cookies.txt")
+# No PythonAnywhere, vamos buscar o cookies.txt direto na sua pasta de usuário
+CAMINHO_COOKIES = os.path.expanduser("~/youtube-key-detector/cookies.txt")
 
 def detectar_tom_musical(caminho_audio):
     try:
@@ -107,7 +108,6 @@ def converter_video(url: str = Form(...)):
         }
     }
     
-    # DOIS PONTOS ADICIONADOS AQUI NA CORREÇÃO
     try:
         with YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
@@ -137,3 +137,6 @@ def baixar_arquivo(arquivo: str):
     if os.path.exists(caminho_completo):
         return FileResponse(caminho_completo, media_type="audio/mp4", filename="audio_convertido.m4a")
     return HTMLResponse("<h3>Arquivo expirado ou nao encontrado. Volte e converta novamente.</h3>", status_code=404)
+
+# Linha fundamental para o servidor do PythonAnywhere conseguir ler o app ASGI como WSGI
+wsgi_app = ASGITOWSGI(app)

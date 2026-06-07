@@ -1,6 +1,6 @@
 fastapi
-uvicorn
 yt-dlp
 librosa
 numpy
 python-multipart
+a2wsgi
