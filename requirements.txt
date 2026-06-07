@@ -3,3 +3,4 @@ uvicorn
 yt-dlp
 librosa
 numpy
+python-multipart
